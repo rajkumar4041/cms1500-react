@@ -1,0 +1,50 @@
+{
+  "name": "cms1500-react",
+  "version": "1.0.0",
+  "description": "Production-ready React library for rendering, filling, and printing CMS-1500 (HCFA) claim forms via PDF with FHIR-compatible input",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "peerDependencies": {
+    "react": ">=17.0.0",
+    "react-dom": ">=17.0.0"
+  },
+  "dependencies": {
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "keywords": [
+    "cms-1500",
+    "hcfa",
+    "medical-claim",
+    "healthcare",
+    "fhir",
+    "react",
+    "print",
+    "pdf",
+    "pdf-lib",
+    "hipaa"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-org/cms1500-react"
+  },
+  "sideEffects": false
+}

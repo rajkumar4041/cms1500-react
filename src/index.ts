@@ -10,6 +10,9 @@ export { fillCMS1500Pdf, parseDateParts } from './utils';
 // FHIR Mapping
 export { mapFHIRToCMS1500 } from './utils';
 
+// Template helpers
+export { TEMPLATE_ASSET_PATH, TEMPLATE_FILENAME } from './utils';
+
 // Constants (for advanced customization)
 export {
   DIAGNOSIS_FIELDS,

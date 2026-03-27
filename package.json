@@ -17,8 +17,13 @@
       }
     }
   },
+  "bin": {
+    "cms1500-copy-template": "./scripts/copy-template.js"
+  },
   "files": [
-    "dist"
+    "dist",
+    "assets",
+    "scripts"
   ],
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --clean",

@@ -18,6 +18,23 @@ npm install cms1500-react pdf-lib
 
 **Peer dependencies:** `react >= 17`, `react-dom >= 17`
 
+## PDF Template Setup
+
+This package includes the official CMS-1500 PDF template. Copy it to your public directory:
+
+```bash
+npx cms1500-copy-template
+# → copies to ./public/cms-1500-template.pdf
+```
+
+Or specify a custom directory:
+
+```bash
+npx cms1500-copy-template public/forms
+```
+
+That's it — the component will automatically use `/cms-1500-template.pdf` as the default template URL. No need to pass `pdfTemplateUrl` unless you want a custom path.
+
 ## Quick Start
 
 ### 1. Component Usage
@@ -29,7 +46,6 @@ function ClaimPage({ claimData }) {
   return (
     <CMS1500Form
       data={claimData}
-      pdfTemplateUrl="/cms-form/form-cms-1500.pdf"
       width="100%"
       height="calc(100vh - 120px)"
     />
@@ -44,7 +60,7 @@ import { useCMS1500 } from 'cms1500-react';
 
 function ClaimPage({ claimData }) {
   const { pdfUrl, loading, generatePdf, handlePrint, handleDownload, iframeRef } =
-    useCMS1500({ pdfTemplateUrl: '/cms-form/form-cms-1500.pdf' });
+    useCMS1500();
 
   useEffect(() => { generatePdf(claimData); }, []);
 
@@ -65,9 +81,23 @@ function ClaimPage({ claimData }) {
 ```ts
 import { fillCMS1500Pdf } from 'cms1500-react';
 
-const templateBytes = await fetch('/cms-form/form-cms-1500.pdf').then(r => r.arrayBuffer());
+// Browser: fetch from public directory
+const templateBytes = await fetch('/cms-1500-template.pdf').then(r => r.arrayBuffer());
 const filledPdf = await fillCMS1500Pdf(templateBytes, claimData);
 // filledPdf is a Uint8Array — save to file, upload, etc.
+```
+
+**Node.js** (API routes, scripts):
+
+```ts
+import { fillCMS1500Pdf } from 'cms1500-react';
+import fs from 'fs';
+import path from 'path';
+
+// Load the bundled template directly from node_modules
+const templatePath = path.resolve('node_modules/cms1500-react/assets/cms-1500-template.pdf');
+const templateBytes = fs.readFileSync(templatePath);
+const filledPdf = await fillCMS1500Pdf(templateBytes, claimData);
 ```
 
 ## Data Shape
@@ -169,12 +199,11 @@ Drop-in replacement for the existing `CMSForm` component:
 // Before: 545-line CMSForm.tsx with inline pdf-lib logic
 <CMSForm disclosureHost={disclosureHost} />
 
-// After: using this package
+// After: using this package (no pdfTemplateUrl needed!)
 import { CMS1500Form } from 'cms1500-react';
 
 <CMS1500Form
   data={disclosureHost.data}  // Same prefillData shape
-  pdfTemplateUrl="/cms-form/form-cms-1500.pdf"
   width="90vw"
   height="calc(100svh - 120px)"
 />

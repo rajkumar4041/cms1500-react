@@ -100,60 +100,168 @@ const templateBytes = fs.readFileSync(templatePath);
 const filledPdf = await fillCMS1500Pdf(templateBytes, claimData);
 ```
 
-## Data Shape
+## Data Shape (`CMS1500Data`)
 
-The `CMS1500Data` type matches the data shape used in ech-frontend's billing module:
+All fields are **optional** — pass only what you need. The JSON below shows every supported field with descriptions:
 
-```ts
-import type { CMS1500Data } from 'cms1500-react';
-
-const data: CMS1500Data = {
-  // Patient
-  patientName: 'JOHN DOE',
-  patientDOB: '1980-01-15',          // YYYY-MM-DD
-  patientSex: 'M',
-  patientAddress: { line1: '123 Main St', city: 'Anytown', state: 'CA', zipcode: '90210' },
-  patientPhone: '(555) 123-4567',
-
-  // Insurance
-  patientInsurance: {
-    planName: 'BCBS PPO',
-    policyNumber: 'GRP-001234',
-    address: { line1: 'PO Box 100', city: 'Chico', state: 'CA', zipcode: '95927' },
-    phoneNumber: '5559876543',
-    dob: '1980-01-15',
-  },
-  insuranceId: 'XYZ123456789',
-
-  // Diagnosis (Box 21, A-L)
-  diagnisisCodeData: [
-    { code: 'J06.9' },
-    { code: 'R05.9' },
-  ],
-
-  // Service lines (Box 24)
-  dateOfService: '2026-03-15',
-  posCode: '11',
-  renderingProviderNPI: '9876543210',
-  patientProcedureCodes: [
-    {
-      procedureCode: { '1': '99213-Office Visit' },
-      modifiers: { '1': '25-Significant E/M' },
-      diagnosisFirstPointers: 'A',
-      charges: 150.00,
-      quantity: 1,
+```jsonc
+{
+  // ─── CARRIER / INSURANCE (Top of form) ───
+  "insuranceType": "group_health",          // "medicare" | "medicaid" | "tricare" | "champva" | "group_health" | "feca_blk_lung" | "other"
+  "insuranceId": "XYZ123456789",            // Box 1a: Insured's ID number
+  "patientInsurance": {                     // Insurance plan details
+    "planName": "BCBS PPO",
+    "policyNumber": "GRP-001234",
+    "address": {
+      "line1": "PO Box 100",
+      "line2": "Suite 200",                // Optional
+      "city": "Chico",
+      "state": "CA",
+      "zipcode": "95927"
     },
+    "phoneNumber": "5559876543",
+    "dob": "1980-01-15",                   // Insured's DOB (YYYY-MM-DD)
+    "sex": "M"                             // "M" | "F"
+  },
+
+  // ─── PATIENT INFO (Boxes 2-5) ───
+  "patientName": "JOHN DOE",               // Box 2: Patient's full name
+  "patientDOB": "1980-01-15",              // Box 3: DOB (YYYY-MM-DD)
+  "patientSex": "M",                       // Box 3: "M" | "F"
+  "patientAddress": {                       // Box 5: Patient address
+    "line1": "123 Main St",
+    "line2": "Apt 4B",                     // Optional
+    "city": "Anytown",
+    "state": "CA",
+    "zipcode": "90210"
+  },
+  "patientPhone": "(555) 123-4567",        // Box 5: Patient phone
+
+  // ─── INSURED INFO (Boxes 4, 6-7, 11) ───
+  "insuredName": "JOHN DOE",               // Box 4: Insured's name (defaults to plan name if omitted)
+  "patientRelationship": "Self",            // Box 6: "Self" | "Spouse" | "Child" | "Other"
+
+  // ─── OTHER INSURED (Box 9) ───
+  "otherInsuredName": "JANE DOE",           // Box 9: Other insured's name
+  "otherInsuredPolicy": "POL-5678",         // Box 9a: Other insured's policy number
+  "otherInsuredPlanName": "AETNA HMO",      // Box 9d: Other insured's plan name
+
+  // ─── CONDITION (Box 10) ───
+  "conditionRelatedTo": {                   // Box 10: Is condition related to...
+    "employment": false,                    // 10a: Employment
+    "autoAccident": false,                  // 10b: Auto accident
+    "autoAccidentState": "CA",              // 10b: State (if auto accident)
+    "otherAccident": false                  // 10c: Other accident
+  },
+
+  // ─── SIGNATURES (Boxes 12-13) ───
+  "patientSignature": "SIGNATURE ON FILE",  // Box 12: Patient signature
+  "patientSignatureDate": "2026-03-15",     // Box 12: Date signed
+  "insuredSignature": "SIGNATURE ON FILE",  // Box 13: Insured's signature
+
+  // ─── DATES (Boxes 14-16, 18) ───
+  "dateOfCurrentIllness": "2026-03-10",     // Box 14: Date of current illness (YYYY-MM-DD)
+  "dateOfSimilarIllness": "2025-06-20",     // Box 15: Similar illness date (YYYY-MM-DD)
+  "unableToWorkFrom": "2026-03-10",         // Box 16: Unable to work from (YYYY-MM-DD)
+  "unableToWorkTo": "2026-03-17",           // Box 16: Unable to work to (YYYY-MM-DD)
+  "hospitalizationFrom": "2026-03-11",      // Box 18: Hospitalization from (YYYY-MM-DD)
+  "hospitalizationTo": "2026-03-13",        // Box 18: Hospitalization to (YYYY-MM-DD)
+
+  // ─── PROVIDER INFO (Boxes 17, 19-20) ───
+  "referringProvider": { "1": "SMITH, JANE MD" },  // Box 17: Referring provider name
+  "referringProviderNPI": "1234567890",     // Box 17b: Referring provider NPI
+  "referringProviderOtherId": "G1234567",   // Box 17a: Other ID
+  "additionalClaimInfo": "Initial treatment",// Box 19: Additional claim info
+  "outsideLab": false,                      // Box 20: Outside lab?
+  "outsideLabCharges": 0,                   // Box 20: Lab charges ($)
+  "nuccUse": "",                            // NUCC Use field
+
+  // ─── DIAGNOSIS (Box 21, A-L, up to 12) ───
+  "diagnisisCodeData": [
+    { "code": "J06.9" },                   // A: Acute upper respiratory infection
+    { "code": "R05.9" },                   // B: Cough
+    { "code": "J20.9" },                   // C: Acute bronchitis
+    { "code": "R50.9" }                    // D: Fever (up to 12 codes: A-L)
   ],
 
-  // Totals
-  total: 150.00,
+  // ─── RESUBMISSION / AUTH (Boxes 22-23) ───
+  "resubmissionCode": "7",                 // Box 22: Resubmission code
+  "originalRefNumber": "ORIG-12345",        // Box 22: Original reference number
+  "priorAuthorization": "AUTH-2026-0042",   // Box 23: Prior authorization number
 
-  // Providers
-  referringProvider: { '1': 'SMITH, JANE MD' },
-  billingProvider: { '1': 'ANYTOWN MEDICAL GROUP' },
-  serviceLocation: { '1': 'ANYTOWN MEDICAL CENTER' },
-  priorAuthorization: 'AUTH-2026-0042',
-};
+  // ─── SERVICE LINES (Box 24, up to 6 lines) ───
+  "dateOfService": "2026-03-15",            // Date of service for all lines (YYYY-MM-DD)
+  "posCode": "11",                          // Place of service code (11 = Office)
+  "renderingProviderNPI": "9876543210",     // Rendering provider NPI for all lines
+  "patientProcedureCodes": [
+    {
+      "procedureCode": { "1": "99213-Office Visit" },      // CPT code (code-description format)
+      "modifiers": { "1": "25-Significant E/M" },          // Up to 4 modifiers
+      "diagnosisFirstPointers": "A",        // Diagnosis pointer (references Box 21)
+      "diagnosisSecondPointers": "B",       // Optional second pointer
+      "diagnosisThirdPointers": "",         // Optional third pointer
+      "diagnosisFourthPointers": "",        // Optional fourth pointer
+      "charges": 150.00,                    // Line charges ($)
+      "quantity": 1,                        // Units/days
+      "epsdt": "",                          // EPSDT/Family Plan
+      "typeOfService": ""                   // Type of service
+    },
+    {
+      "procedureCode": { "1": "99214-Office Visit Extended" },
+      "modifiers": {},
+      "diagnosisFirstPointers": "A",
+      "charges": 250.00,
+      "quantity": 1
+    }
+  ],
+
+  // ─── PROVIDER / BILLING (Boxes 25-33) ───
+  "federalTaxId": "12-3456789",            // Box 25: Federal Tax ID
+  "federalTaxIdType": "EIN",               // Box 25: "SSN" | "EIN"
+  "patientAccountNumber": "ACCT-001234",    // Box 26: Patient account number
+  "acceptAssignment": true,                 // Box 27: Accept assignment?
+  "total": 400.00,                          // Box 28: Total charge ($)
+  "amountPaid": 50.00,                      // Box 29: Amount paid ($)
+
+  "physicianSignature": "SIGNATURE ON FILE",// Box 31: Physician signature
+  "physicianSignatureDate": "2026-03-15",   // Box 31: Date
+
+  "serviceLocation": { "1": "ANYTOWN MEDICAL CENTER" },  // Box 32: Service facility name
+  "serviceFacilityName": "ANYTOWN MEDICAL CENTER",        // Box 32: Facility name
+  "serviceFacilityAddress": "456 Health Blvd, Anytown CA 90210", // Box 32: Facility address
+
+  "billingProvider": { "1": "ANYTOWN MEDICAL GROUP" },    // Box 33: Billing provider name
+  "billingProviderName": "ANYTOWN MEDICAL GROUP",          // Box 33: Provider name
+  "billingProviderAddress": "789 Billing Ave, Anytown CA 90210", // Box 33: Provider address
+  "billingProviderPhone": "(555) 987-6543",                // Box 33: Phone
+  "billingProviderNPI": "1112223334",       // Box 33a: Billing provider NPI
+  "billingProviderGroupNPI": "5556667778"   // Box 33b: Group NPI
+}
+```
+
+### Minimal Example
+
+Only a few fields are needed to generate a basic claim:
+
+```json
+{
+  "patientName": "JOHN DOE",
+  "patientDOB": "1980-01-15",
+  "patientSex": "M",
+  "insuranceId": "XYZ123456789",
+  "diagnisisCodeData": [{ "code": "J06.9" }],
+  "dateOfService": "2026-03-15",
+  "posCode": "11",
+  "patientProcedureCodes": [
+    {
+      "procedureCode": { "1": "99213" },
+      "diagnosisFirstPointers": "A",
+      "charges": 150.00,
+      "quantity": 1
+    }
+  ],
+  "total": 150.00
+}
 ```
 
 ## FHIR R4 Mapping

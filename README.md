@@ -18,22 +18,9 @@ npm install cms1500-react pdf-lib
 
 **Peer dependencies:** `react >= 17`, `react-dom >= 17`
 
-## PDF Template Setup
+## Zero Config — PDF Template Included
 
-This package includes the official CMS-1500 PDF template. Copy it to your public directory:
-
-```bash
-npx cms1500-copy-template
-# → copies to ./public/cms-1500-template.pdf
-```
-
-Or specify a custom directory:
-
-```bash
-npx cms1500-copy-template public/forms
-```
-
-That's it — the component will automatically use `/cms-1500-template.pdf` as the default template URL. No need to pass `pdfTemplateUrl` unless you want a custom path.
+The CMS-1500 PDF template is **bundled inside the package**. No file copying, no public directory setup, no URL configuration. Just install and use — it works out of the box.
 
 ## Quick Start
 
@@ -79,25 +66,12 @@ function ClaimPage({ claimData }) {
 ### 3. Headless PDF Generation (no React)
 
 ```ts
-import { fillCMS1500Pdf } from 'cms1500-react';
+import { fillCMS1500Pdf, getEmbeddedTemplate } from 'cms1500-react';
 
-// Browser: fetch from public directory
-const templateBytes = await fetch('/cms-1500-template.pdf').then(r => r.arrayBuffer());
+// Template is bundled — no fetch needed
+const templateBytes = getEmbeddedTemplate();
 const filledPdf = await fillCMS1500Pdf(templateBytes, claimData);
 // filledPdf is a Uint8Array — save to file, upload, etc.
-```
-
-**Node.js** (API routes, scripts):
-
-```ts
-import { fillCMS1500Pdf } from 'cms1500-react';
-import fs from 'fs';
-import path from 'path';
-
-// Load the bundled template directly from node_modules
-const templatePath = path.resolve('node_modules/cms1500-react/assets/cms-1500-template.pdf');
-const templateBytes = fs.readFileSync(templatePath);
-const filledPdf = await fillCMS1500Pdf(templateBytes, claimData);
 ```
 
 ## Data Shape (`CMS1500Data`)
@@ -301,23 +275,28 @@ const formData = mapFHIRToCMS1500(bundle);
 
 ## Migrating from CMSForm.tsx
 
-Drop-in replacement for the existing `CMSForm` component:
+Replaces ~545 lines of inline pdf-lib logic, manual field mapping, and PDF fetching with a single component:
 
 ```tsx
-// Before: 545-line CMSForm.tsx with inline pdf-lib logic
-<CMSForm disclosureHost={disclosureHost} />
+// BEFORE: CMSForm.tsx — manual pdf-lib, fetch template, 200+ field mappings
+import { PDFDocument, StandardFonts } from "pdf-lib";
+const existingPdfBytes = await fetch("/cms-form/form-cms-1500.pdf").then(res => res.arrayBuffer());
+const pdfDoc = await PDFDocument.load(existingPdfBytes);
+const customFont = await pdfDoc.embedStandardFont(StandardFonts.CourierBold);
+const form = pdfDoc.getForm();
+// ... 200+ lines of form.getTextField(...).setText(...)
 
-// After: using this package (no pdfTemplateUrl needed!)
+// AFTER: Just this — PDF template is bundled, all mapping handled internally
 import { CMS1500Form } from 'cms1500-react';
 
 <CMS1500Form
-  data={disclosureHost.data}  // Same prefillData shape
+  data={disclosureHost.data}  // Same prefillData shape — no changes needed
   width="90vw"
   height="calc(100svh - 120px)"
 />
 ```
 
-See `example/App.tsx` for a complete migration example with the `CMS1500FormWrapper`.
+No `PdfViewDrawer`, no `useGetMMDDYY`, no `getModifier`, no `getDiagnosis`, no `cms1500DummyPrefill` — all handled by the package.
 
 ## API Reference
 
@@ -326,7 +305,7 @@ See `example/App.tsx` for a complete migration example with the `CMS1500FormWrap
 | Prop | Type | Default | Description |
 |------|------|---------|-------------|
 | `data` | `CMS1500Data` | required | Form data |
-| `pdfTemplateUrl` | `string` | `/cms-form/form-cms-1500.pdf` | Path to PDF template |
+| `pdfTemplateUrl` | `string` | Built-in (bundled) | Optional custom PDF template URL. Uses embedded template by default |
 | `onPdfReady` | `(url: string) => void` | — | Called when PDF is generated |
 | `onError` | `(error: Error) => void` | — | Called on error |
 | `width` | `string \| number` | `'100%'` | Viewer width |

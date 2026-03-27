@@ -11,7 +11,7 @@ export { fillCMS1500Pdf, parseDateParts } from './utils';
 export { mapFHIRToCMS1500 } from './utils';
 
 // Template helpers
-export { TEMPLATE_ASSET_PATH, TEMPLATE_FILENAME } from './utils';
+export { TEMPLATE_ASSET_PATH, TEMPLATE_FILENAME, getEmbeddedTemplate } from './utils';
 
 // Constants (for advanced customization)
 export {

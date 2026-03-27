@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import type { CMS1500Data, UseCMS1500Options } from '../types/cms1500';
 import { fillCMS1500Pdf } from '../utils/pdfFiller';
+import { getEmbeddedTemplate } from '../utils/templateData';
 
 export interface UseCMS1500Return {
   /** Generated PDF blob URL (null until generated) */
@@ -21,18 +22,16 @@ export interface UseCMS1500Return {
   cleanup: () => void;
 }
 
-const DEFAULT_PDF_URL = '/cms-1500-template.pdf';
-
 /**
  * Hook for generating, viewing, printing, and downloading CMS-1500 PDFs.
  *
- * Uses pdf-lib to fill the actual CMS-1500 PDF template form fields.
+ * The PDF template is bundled with the package — no file copy or URL needed.
+ * If pdfTemplateUrl is provided, it will fetch from that URL instead.
+ *
  * No PHI is logged, stored, or transmitted.
  */
 export function useCMS1500(options: UseCMS1500Options = {}): UseCMS1500Return {
-  const {
-    pdfTemplateUrl = DEFAULT_PDF_URL,
-  } = options;
+  const { pdfTemplateUrl } = options;
 
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -53,10 +52,18 @@ export function useCMS1500(options: UseCMS1500Options = {}): UseCMS1500Return {
     cleanup();
 
     try {
-      const templateBytes = await fetch(pdfTemplateUrl).then((res) => {
-        if (!res.ok) throw new Error(`Failed to fetch PDF template: ${res.status} ${res.statusText}`);
-        return res.arrayBuffer();
-      });
+      let templateBytes: ArrayBuffer | Uint8Array;
+
+      if (pdfTemplateUrl) {
+        // User provided a custom URL — fetch it
+        templateBytes = await fetch(pdfTemplateUrl).then((res) => {
+          if (!res.ok) throw new Error(`Failed to fetch PDF template: ${res.status} ${res.statusText}`);
+          return res.arrayBuffer();
+        });
+      } else {
+        // Use the embedded template — no fetch needed
+        templateBytes = getEmbeddedTemplate();
+      }
 
       const filledPdfBytes = await fillCMS1500Pdf(templateBytes, data);
 

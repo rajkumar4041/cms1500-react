@@ -21,7 +21,7 @@ export interface UseCMS1500Return {
   cleanup: () => void;
 }
 
-const DEFAULT_PDF_URL = '/cms-form/form-cms-1500.pdf';
+const DEFAULT_PDF_URL = '/cms-1500-template.pdf';
 
 /**
  * Hook for generating, viewing, printing, and downloading CMS-1500 PDFs.

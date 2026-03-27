@@ -1,6 +1,6 @@
 {
   "name": "cms1500-react",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Production-ready React library for rendering, filling, and printing CMS-1500 (HCFA) claim forms via PDF with FHIR-compatible input",
   "main": "dist/index.js",
   "module": "dist/index.mjs",

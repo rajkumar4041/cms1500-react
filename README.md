@@ -219,22 +219,57 @@ Low-level function — fill a PDF template and get back `Uint8Array`. Works with
 
 Maps `FHIRClaimBundle` → `CMS1500Data`.
 
-## HIPAA Security Considerations
+## HIPAA Compliance
 
-- **No data storage** — all data passed via props, held only in memory
-- **No logging** — no `console.log` of PHI (unlike the original CMSForm.tsx)
-- **No network calls** — only fetches the blank PDF template
-- **No persistence** — no localStorage, cookies, or IndexedDB
-- **Client-side only** — PDF generation happens entirely in the browser
-- **Stateless** — no internal state of PHI beyond the current render
+This library is designed with **HIPAA (Health Insurance Portability and Accountability Act)** compliance in mind. It supports the **Privacy Rule**, **Security Rule**, and **Minimum Necessary Standard** by ensuring that Protected Health Information (PHI) is handled securely at every step.
 
-### Recommended Practices
+### How This Library Supports HIPAA
 
-1. Gate form access behind authentication/authorization
-2. Log access events (who viewed/printed) in your application layer
-3. Serve over HTTPS
-4. Auto-timeout sessions displaying PHI
-5. Set `Cache-Control: no-store` for pages rendering PHI
+#### Zero PHI Footprint
+
+| Safeguard | How It's Enforced |
+|-----------|-------------------|
+| **No data storage** | All data is passed via props and held only in memory — nothing is written to disk |
+| **No logging of PHI** | No `console.log`, `console.debug`, or telemetry captures patient data |
+| **No network transmission** | The library makes zero outbound API calls — only fetches the blank PDF template |
+| **No persistence** | No localStorage, sessionStorage, cookies, or IndexedDB usage |
+| **No third-party data sharing** | No analytics, tracking pixels, or external SDKs are loaded |
+| **Client-side only** | PDF generation happens entirely in the browser using `pdf-lib` — PHI never leaves the client |
+| **Stateless rendering** | No internal state retains PHI beyond the current render cycle |
+
+#### HIPAA Technical Safeguards Alignment
+
+| HIPAA Requirement | Library Support |
+|-------------------|-----------------|
+| **Access Control (§164.312(a))** | Library is stateless — access control is enforced at your application layer (auth/RBAC) |
+| **Audit Controls (§164.312(b))** | No PHI is logged internally; your app can log access events (who viewed/printed/downloaded) |
+| **Integrity Controls (§164.312(c))** | PDF is generated from structured data using `pdf-lib` — no manual field manipulation or injection risk |
+| **Transmission Security (§164.312(e))** | Library operates client-side only; serve your app over HTTPS to encrypt data in transit |
+| **Minimum Necessary (§164.502(b))** | Only the fields required for CMS-1500 are accepted and rendered — no extraneous PHI processing |
+
+#### PHI Data Flow
+
+```
+Your App (authenticated) → Props → cms1500-react → pdf-lib → Browser Memory → Print/Download
+                                    ↑                                ↑
+                              No disk writes                  No server calls
+                              No logging                      No persistence
+```
+
+### Recommended Practices for HIPAA-Compliant Deployment
+
+1. **Authentication & Authorization** — Gate form access behind role-based access control (RBAC). Only authorized users (billing staff, providers) should view claim forms.
+2. **Audit Logging** — Log access events in your application layer: who viewed, printed, or downloaded each claim form, and when.
+3. **HTTPS Only** — Always serve your application over TLS/HTTPS to protect PHI in transit.
+4. **Session Timeout** — Auto-timeout sessions displaying PHI after a period of inactivity (recommended: 15 minutes per HIPAA best practices).
+5. **Cache Control** — Set `Cache-Control: no-store` and `Pragma: no-cache` headers for pages rendering PHI to prevent browser caching.
+6. **Secure Print Handling** — Educate users on secure handling of printed CMS-1500 forms (physical safeguard).
+7. **BAA Coverage** — If using this library in a SaaS product, ensure your hosting provider is covered under a Business Associate Agreement (BAA).
+8. **Incident Response** — Have a breach notification plan in place as required by the HIPAA Breach Notification Rule (§164.400-414).
+
+### Compliance Disclaimer
+
+> This library is designed to **support** HIPAA compliance but does **not** guarantee it on its own. HIPAA compliance is a holistic requirement covering administrative, physical, and technical safeguards across your entire application stack. You are responsible for implementing appropriate access controls, audit logging, encryption, and organizational policies in your deployment environment.
 
 ## License
 

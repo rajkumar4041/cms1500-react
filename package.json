@@ -1,10 +1,22 @@
 {
-  "name": "cms1500-react",
+  "name": "@rajkumar404/cms1500-react",
   "version": "1.0.0",
   "description": "Production-ready React library for rendering, filling, and printing CMS-1500 (HCFA) claim forms via PDF with FHIR-compatible input",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
   "files": [
     "dist"
   ],
@@ -44,7 +56,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/cms1500-react"
+    "url": "https://github.com/rajkumar4041/cms1500-react"
   },
   "sideEffects": false
 }

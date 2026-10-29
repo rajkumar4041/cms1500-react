@@ -147,6 +147,11 @@ export interface CMS1500Data {
   // === DIAGNOSIS (Box 21) ===
   /** Box 21: Diagnosis codes (A-L, up to 12) */
   diagnisisCodeData?: DiagnosisCode[];
+  /**
+   * Box 21: Alternative diagnosis source — a keyed map of "CODE - description"
+   * strings. Used as a fallback when `diagnisisCodeData` is not provided.
+   */
+  diagnosisCodes?: Record<string, string>;
 
   // === RESUBMISSION / AUTH (Boxes 22-23) ===
   resubmissionCode?: string;
@@ -213,6 +218,15 @@ export interface CMS1500FormProps {
   height?: string | number;
   /** Whether to auto-generate PDF on mount (default: true) */
   autoGenerate?: boolean;
+  /**
+   * Show the package's own Print / Download / Open-in-new-tab toolbar.
+   * Default false — the browser's native PDF viewer already provides these.
+   * When true, the native viewer toolbar is suppressed to avoid duplicate
+   * controls.
+   */
+  showToolbar?: boolean;
+  /** File name used by the toolbar's Download action (default: "cms-1500-claim.pdf") */
+  downloadFileName?: string;
   /** Custom CSS class */
   className?: string;
   /** Inline styles */

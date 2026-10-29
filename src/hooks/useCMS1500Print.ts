@@ -82,14 +82,37 @@ export function useCMS1500(options: UseCMS1500Options = {}): UseCMS1500Return {
   }, [pdfTemplateUrl, cleanup]);
 
   const handlePrint = useCallback(() => {
-    if (iframeRef.current?.contentWindow) {
-      iframeRef.current.contentWindow.print();
-    } else if (pdfUrl) {
-      const printWindow = window.open(pdfUrl, '_blank');
-      if (printWindow) {
-        printWindow.addEventListener('load', () => printWindow.print());
+    if (!pdfUrl) return;
+
+    // Printing the visible viewer's contentWindow silently no-ops on the
+    // browser PDF plugin. A dedicated off-screen iframe loaded with the blob,
+    // printed once it fires `load`, is the reliable cross-browser path.
+    const printFrame = document.createElement('iframe');
+    printFrame.style.cssText =
+      'position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
+    printFrame.src = pdfUrl;
+
+    const remove = () => {
+      if (printFrame.parentNode) printFrame.parentNode.removeChild(printFrame);
+    };
+
+    printFrame.onload = () => {
+      try {
+        const win = printFrame.contentWindow;
+        if (!win) throw new Error('No print frame window');
+        win.addEventListener('afterprint', remove);
+        win.focus();
+        win.print();
+        // Fallback cleanup if `afterprint` never fires (some PDF viewers).
+        setTimeout(remove, 60_000);
+      } catch {
+        remove();
+        // Popup is user-gesture initiated here, so it is not blocked.
+        window.open(pdfUrl, '_blank');
       }
-    }
+    };
+
+    document.body.appendChild(printFrame);
   }, [pdfUrl]);
 
   const handleDownload = useCallback((filename = 'cms-1500-claim.pdf') => {

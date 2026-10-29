@@ -16,11 +16,17 @@ export const CARRIER_FIELDS = {
   cityStateZip: 'insurance_city_state_zip',
 } as const;
 
+/** Box 1: Insurance type (multi-state checkbox) */
+export const INSURANCE_TYPE_FIELD = 'insurance_type';
+
 /** Box 1a: Insured's ID */
 export const INSURED_ID_FIELD = 'insurance_id';
 
 /** Box 2: Patient name */
 export const PATIENT_NAME_FIELD = 'pt_name';
+
+/** Box 3: Patient sex (multi-state checkbox) */
+export const PATIENT_SEX_FIELD = 'sex';
 
 /** Box 3: Patient DOB */
 export const PATIENT_DOB_FIELDS = {

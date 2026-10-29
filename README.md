@@ -157,6 +157,13 @@ All fields are **optional** — pass only what you need. The JSON below shows ev
     { "code": "J20.9" },                   // C: Acute bronchitis
     { "code": "R50.9" }                    // D: Fever (up to 12 codes: A-L)
   ],
+  // Fallback: if `diagnisisCodeData` is omitted or empty, `diagnosisCodes` is
+  // used instead — a keyed map of "CODE - description" strings. Each value is
+  // split on " - " and the leading code is taken. Keys/order are preserved.
+  "diagnosisCodes": {
+    "1": "J06.9 - Acute upper respiratory infection",
+    "2": "R05.9 - Cough"
+  },
 
   // ─── RESUBMISSION / AUTH (Boxes 22-23) ───
   "resubmissionCode": "7",                 // Box 22: Resubmission code

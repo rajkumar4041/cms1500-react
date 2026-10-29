@@ -1,9 +1,11 @@
-import { PDFDocument, StandardFonts, PDFForm, PDFFont } from 'pdf-lib';
-import type { CMS1500Data } from '../types/cms1500';
+import { PDFDocument, StandardFonts, PDFForm, PDFFont, PDFName } from 'pdf-lib';
+import type { CMS1500Data, DiagnosisCode } from '../types/cms1500';
 import {
   CARRIER_FIELDS,
+  INSURANCE_TYPE_FIELD,
   INSURED_ID_FIELD,
   PATIENT_NAME_FIELD,
+  PATIENT_SEX_FIELD,
   PATIENT_DOB_FIELDS,
   INSURED_NAME_FIELD,
   PATIENT_ADDRESS_FIELDS,
@@ -97,14 +99,15 @@ function buildDiagnosisPointer(entry: {
   diagnosisThirdPointers?: string;
   diagnosisFourthPointers?: string;
 }): string {
-  const pointers = [
+  return [
     entry.diagnosisFirstPointers,
     entry.diagnosisSecondPointers,
     entry.diagnosisThirdPointers,
     entry.diagnosisFourthPointers,
-  ].filter(Boolean);
-
-  return pointers.join('-');
+  ]
+    .map(pointerToLetter)
+    .filter(Boolean)
+    .join('');
 }
 
 /**
@@ -127,19 +130,98 @@ function setTextField(
 }
 
 /**
- * Safely set a checkbox field. Silently skips if field doesn't exist.
+ * Set a multi-state checkbox to a specific "on" state.
+ *
+ * Several CMS-1500 boxes (Box 1 insurance type, Box 3/11 sex, Box 6
+ * relationship, Box 10 condition, Box 20 lab, Box 25 SSN/EIN, Box 27
+ * assignment) are modelled as a single checkbox field whose widgets each carry
+ * a distinct on-state value — e.g. `/Medicare`, `/S`, `/YES`, `/MALE`, `/EIN`.
+ * pdf-lib's `check()` only toggles the field's default on-state, so it cannot
+ * select the correct widget. Instead we set the field value (V) and flip each
+ * widget's appearance state to match. An empty/undefined onState clears it.
  */
-function setCheckbox(form: PDFForm, fieldName: string, checked: boolean): void {
+function setExclusiveCheckbox(
+  form: PDFForm,
+  fieldName: string,
+  onState?: string
+): void {
   try {
     const field = form.getCheckBox(fieldName);
-    if (checked) {
-      field.check();
-    } else {
-      field.uncheck();
-    }
+    const off = PDFName.of('Off');
+    const on = onState ? PDFName.of(onState) : off;
+    field.acroField.dict.set(PDFName.of('V'), on);
+    field.acroField.getWidgets().forEach((w) => {
+      const matches = Boolean(onState) && w.getOnValue()?.toString() === on.toString();
+      w.setAppearanceState(matches ? on : off);
+    });
   } catch {
     // Field not found — skip silently
   }
+}
+
+/** Box 1 insurance type → the matching PDF checkbox on-state. */
+const INSURANCE_TYPE_ON_STATE: Record<string, string> = {
+  medicare: 'Medicare',
+  medicaid: 'Medicaid',
+  tricare: 'Tricare',
+  champva: 'Champva',
+  group_health: 'Group',
+  feca_blk_lung: 'Feca',
+  other: 'Other',
+};
+
+function insuranceTypeOnState(type?: string): string {
+  if (!type) return '';
+  return INSURANCE_TYPE_ON_STATE[type.toLowerCase().replace(/\s+/g, '_')] ?? '';
+}
+
+/** Box 6 relationship → S / M / C / O on-state. */
+function relationshipOnState(relationship?: string): string {
+  if (!relationship) return '';
+  const rel = relationship.toUpperCase().replace(/\s+/g, '_');
+  if (rel === 'SELF') return 'S';
+  if (rel === 'SPOUSE' || rel === 'LIFE_PARTNER') return 'M';
+  if (
+    rel === 'CHILD' ||
+    rel === 'NATURAL_CHILD' ||
+    rel === 'FOSTER_CHILD' ||
+    rel === 'STEPCHILD'
+  )
+    return 'C';
+  return 'O';
+}
+
+/** Box 3 sex → M / F on-state. */
+function sexOnState(sex?: string): string {
+  if (!sex) return '';
+  const s = sex.toUpperCase();
+  if (s === 'M' || s === 'MALE') return 'M';
+  if (s === 'F' || s === 'FEMALE') return 'F';
+  return '';
+}
+
+/** Box 11 insured sex → MALE / FEMALE on-state. */
+function insuredSexOnState(sex?: string): string {
+  const s = sexOnState(sex);
+  return s === 'M' ? 'MALE' : s === 'F' ? 'FEMALE' : '';
+}
+
+/** Box 10 / 27 YES-NO checkbox → YES / NO on-state. */
+function yesNoOnState(v?: boolean | null): string {
+  if (v == null) return '';
+  return v ? 'YES' : 'NO';
+}
+
+/**
+ * Box 24E diagnosis pointer → single A–L letter.
+ * Accepts an existing letter (A–L) or a 1–12 index; anything else is dropped.
+ */
+function pointerToLetter(pointer?: string): string {
+  const p = pointer != null ? String(pointer).trim() : '';
+  if (!p) return '';
+  if (/^[A-La-l]$/.test(p)) return p.toUpperCase();
+  const n = parseInt(p, 10);
+  return n >= 1 && n <= 12 ? 'ABCDEFGHIJKL'[n - 1] : '';
 }
 
 /**
@@ -222,6 +304,9 @@ export async function fillCMS1500Pdf(
     set(CARRIER_FIELDS.cityStateZip, cityStateZip);
   }
 
+  // === BOX 1: Insurance Type ===
+  setExclusiveCheckbox(form, INSURANCE_TYPE_FIELD, insuranceTypeOnState(data.insuranceType));
+
   // === BOX 1a: Insured's ID ===
   set(INSURED_ID_FIELD, data.insuranceId);
 
@@ -239,6 +324,7 @@ export async function fillCMS1500Pdf(
   set(PATIENT_DOB_FIELDS.mm, dob.MM);
   set(PATIENT_DOB_FIELDS.dd, dob.DD);
   set(PATIENT_DOB_FIELDS.yy, dob.YY);
+  setExclusiveCheckbox(form, PATIENT_SEX_FIELD, sexOnState(data.patientSex));
 
   // === BOX 4: Insured's Name ===
   set(INSURED_NAME_FIELD, data.insuredName ?? ins?.planName);
@@ -257,10 +343,7 @@ export async function fillCMS1500Pdf(
   }
 
   // === BOX 6: Relationship ===
-  if (data.patientRelationship) {
-    setCheckbox(form, RELATIONSHIP_FIELD, true);
-    // The checkbox selection value maps to the relationship
-  }
+  setExclusiveCheckbox(form, RELATIONSHIP_FIELD, relationshipOnState(data.patientRelationship));
 
   // === BOX 7: Insured's Address ===
   if (ins?.address) {
@@ -282,16 +365,13 @@ export async function fillCMS1500Pdf(
 
   // === BOX 10: Condition Related To ===
   if (data.conditionRelatedTo) {
-    if (data.conditionRelatedTo.employment != null) {
-      setCheckbox(form, CONDITION_FIELDS.employment, data.conditionRelatedTo.employment);
+    setExclusiveCheckbox(form, CONDITION_FIELDS.employment, yesNoOnState(data.conditionRelatedTo.employment));
+    setExclusiveCheckbox(form, CONDITION_FIELDS.autoAccident, yesNoOnState(data.conditionRelatedTo.autoAccident));
+    // Box 10b accident place only applies when an auto accident is flagged.
+    if (data.conditionRelatedTo.autoAccident) {
+      set(CONDITION_FIELDS.accidentPlace, data.conditionRelatedTo.autoAccidentState);
     }
-    if (data.conditionRelatedTo.autoAccident != null) {
-      setCheckbox(form, CONDITION_FIELDS.autoAccident, data.conditionRelatedTo.autoAccident);
-    }
-    set(CONDITION_FIELDS.accidentPlace, data.conditionRelatedTo.autoAccidentState);
-    if (data.conditionRelatedTo.otherAccident != null) {
-      setCheckbox(form, CONDITION_FIELDS.otherAccident, data.conditionRelatedTo.otherAccident);
-    }
+    setExclusiveCheckbox(form, CONDITION_FIELDS.otherAccident, yesNoOnState(data.conditionRelatedTo.otherAccident));
   }
 
   // === BOX 11: Insured's Policy ===
@@ -302,6 +382,7 @@ export async function fillCMS1500Pdf(
     set(INSURED_POLICY_FIELDS.dobDd, insDob.DD);
     set(INSURED_POLICY_FIELDS.dobYy, insDob.YY);
   }
+  setExclusiveCheckbox(form, INSURED_POLICY_FIELDS.sex, insuredSexOnState(ins?.sex));
   set(INSURED_POLICY_FIELDS.planName, ins?.planName);
 
   // === BOX 12-13: Signatures ===
@@ -358,21 +439,25 @@ export async function fillCMS1500Pdf(
   }
 
   // === BOX 20: Outside Lab ===
-  if (data.outsideLab != null) {
-    setCheckbox(form, OUTSIDE_LAB_FIELDS.lab, data.outsideLab);
-  }
+  setExclusiveCheckbox(form, OUTSIDE_LAB_FIELDS.lab, yesNoOnState(data.outsideLab));
   if (data.outsideLabCharges != null) {
     set(OUTSIDE_LAB_FIELDS.charge, String(data.outsideLabCharges));
   }
 
   // === BOX 21: Diagnosis Codes ===
-  if (data.diagnisisCodeData?.length) {
-    data.diagnisisCodeData.slice(0, 12).forEach((dx, i) => {
-      if (dx?.code && DIAGNOSIS_FIELDS[i]) {
-        set(DIAGNOSIS_FIELDS[i], dx.code);
-      }
-    });
-  }
+  // Prefer the structured array; fall back to a keyed map of "CODE - desc".
+  const diagnosisCodes: DiagnosisCode[] = data.diagnisisCodeData?.length
+    ? data.diagnisisCodeData
+    : data.diagnosisCodes
+      ? Object.values(data.diagnosisCodes).map((val) => ({
+          code: val?.split(' - ')[0]?.trim() ?? '',
+        }))
+      : [];
+  diagnosisCodes.slice(0, 12).forEach((dx, i) => {
+    if (dx?.code && DIAGNOSIS_FIELDS[i]) {
+      set(DIAGNOSIS_FIELDS[i], dx.code);
+    }
+  });
 
   // === BOX 22: Resubmission ===
   set(RESUBMISSION_FIELDS.code, data.resubmissionCode);
@@ -439,19 +524,15 @@ export async function fillCMS1500Pdf(
     });
   }
 
-  // === BOX 25: Federal Tax ID ===
+  // === BOX 25: Federal Tax ID (SSN / EIN) ===
   set(TAX_ID_FIELDS.taxId, data.federalTaxId);
-  if (data.federalTaxIdType === 'SSN') {
-    setCheckbox(form, TAX_ID_FIELDS.ssn, true);
-  }
+  setExclusiveCheckbox(form, TAX_ID_FIELDS.ssn, data.federalTaxIdType);
 
   // === BOX 26: Patient Account ===
   set(PATIENT_ACCOUNT_FIELD, data.patientAccountNumber);
 
   // === BOX 27: Accept Assignment ===
-  if (data.acceptAssignment != null) {
-    setCheckbox(form, ASSIGNMENT_FIELD, data.acceptAssignment);
-  }
+  setExclusiveCheckbox(form, ASSIGNMENT_FIELD, yesNoOnState(data.acceptAssignment));
 
   // === BOX 28: Total Charge ===
   if (data.total != null) {

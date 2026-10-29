@@ -1,6 +1,15 @@
-# cms1500-react [https://www.npmjs.com/package/cms1500-react]
+# cms1500-react
+
+[![npm version](https://img.shields.io/npm/v/cms1500-react.svg)](https://www.npmjs.com/package/cms1500-react)
+[![npm downloads](https://img.shields.io/npm/dm/cms1500-react.svg)](https://www.npmjs.com/package/cms1500-react)
+[![license](https://img.shields.io/npm/l/cms1500-react.svg)](https://github.com/rajkumar4041/cms1500-react)
+[![types](https://img.shields.io/npm/types/cms1500-react.svg)](https://www.npmjs.com/package/cms1500-react)
+[![React](https://img.shields.io/badge/React-%E2%89%A5%2017-61dafb.svg)](https://react.dev/)
+[![GitHub stars](https://img.shields.io/github/stars/rajkumar4041/cms1500-react.svg?style=social)](https://github.com/rajkumar4041/cms1500-react)
 
 Production-ready React library for filling, rendering, and printing **CMS-1500 (HCFA)** claim forms. Uses `pdf-lib` to fill actual PDF form fields for pixel-perfect output. FHIR R4 compatible, HIPAA-conscious design.
+
+**Links:** [npm](https://www.npmjs.com/package/cms1500-react) · [GitHub](https://github.com/rajkumar4041/cms1500-react) · [Issues](https://github.com/rajkumar4041/cms1500-react/issues)
 
 ## How It Works
 

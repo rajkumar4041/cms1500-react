@@ -245,6 +245,30 @@ Only a few fields are needed to generate a basic claim:
 }
 ```
 
+## Validation
+
+`validateCMS1500(data)` checks a payload for claim-readiness before you print or
+submit it. It never throws and never mutates the input.
+
+```tsx
+import { validateCMS1500 } from 'cms1500-react';
+
+const { valid, errors, warnings } = validateCMS1500(claimData);
+
+if (!valid) {
+  // errors block submission (invalid NPI/date, a diagnosis pointer referencing
+  // a Box 21 code that isn't there, missing name/diagnosis/service line…)
+  console.error(errors);
+}
+// warnings never block — overflow past the 12-diagnosis / 6-line form caps,
+// missing recommended fields, etc.
+console.warn(warnings);
+```
+
+Each issue is `{ field, code, message, severity }` where `code` is a stable
+identifier (e.g. `DIAGNOSIS_POINTER_OUT_OF_RANGE`, `NPI_INVALID`,
+`SERVICE_LINE_OVERFLOW`) you can branch on.
+
 ## FHIR R4 Mapping
 
 ```tsx
@@ -317,7 +341,9 @@ No `PdfViewDrawer`, no `useGetMMDDYY`, no `getModifier`, no `getDiagnosis`, no `
 | `onError` | `(error: Error) => void` | — | Called on error |
 | `width` | `string \| number` | `'100%'` | Viewer width |
 | `height` | `string \| number` | `'calc(100vh - 120px)'` | Viewer height |
-| `autoGenerate` | `boolean` | `true` | Auto-generate on mount |
+| `autoGenerate` | `boolean` | `true` | Auto-generate on mount and whenever `data` changes |
+| `showToolbar` | `boolean` | `false` | Show the built-in Print / Download / Open-in-new-tab toolbar. When `true`, the native viewer toolbar is suppressed to avoid duplicate controls |
+| `downloadFileName` | `string` | `'cms-1500-claim.pdf'` | File name for the toolbar's Download action |
 | `className` | `string` | — | CSS class |
 | `style` | `CSSProperties` | — | Inline styles |
 
@@ -341,6 +367,11 @@ Low-level function — fill a PDF template and get back `Uint8Array`. Works with
 ### `mapFHIRToCMS1500(bundle)`
 
 Maps `FHIRClaimBundle` → `CMS1500Data`.
+
+### `validateCMS1500(data)`
+
+Returns `{ valid, errors, warnings }` for a `CMS1500Data` payload. See
+[Validation](#validation).
 
 ## HIPAA Compliance
 

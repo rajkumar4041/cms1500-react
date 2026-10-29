@@ -7,6 +7,14 @@ export { useCMS1500 } from './hooks';
 // PDF Engine
 export { fillCMS1500Pdf, parseDateParts } from './utils';
 
+// Validation
+export { validateCMS1500 } from './utils';
+export type {
+  CMS1500ValidationResult,
+  CMS1500ValidationIssue,
+  CMS1500IssueSeverity,
+} from './utils';
+
 // FHIR Mapping
 export { mapFHIRToCMS1500 } from './utils';
 

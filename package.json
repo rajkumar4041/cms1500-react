@@ -86,9 +86,13 @@
     "typescript"
   ],
   "license": "MIT",
+  "homepage": "https://cms-1500-documentation.vercel.app/",
   "repository": {
     "type": "git",
     "url": "https://github.com/rajkumar4041/cms1500-react"
+  },
+  "bugs": {
+    "url": "https://github.com/rajkumar4041/cms1500-react/issues"
   },
   "sideEffects": false
 }

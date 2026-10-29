@@ -189,12 +189,22 @@ export interface CMS1500Data {
   /** Box 32: Service facility */
   serviceLocation?: Record<string, string> | string;
   serviceFacilityName?: string;
-  serviceFacilityAddress?: string;
+  /**
+   * Box 32 address. A `CMS1500Address` fills the street line and the
+   * city/state/zip line separately (recommended); a plain string goes on the
+   * street line only.
+   */
+  serviceFacilityAddress?: string | CMS1500Address;
 
   /** Box 33: Billing provider */
   billingProvider?: Record<string, string> | string;
   billingProviderName?: string;
-  billingProviderAddress?: string;
+  /**
+   * Box 33 address. A `CMS1500Address` fills the street line and the
+   * city/state/zip line separately (recommended); a plain string goes on the
+   * street line only.
+   */
+  billingProviderAddress?: string | CMS1500Address;
   billingProviderPhone?: string;
 
   /** Box 33a/b: NPI and group */

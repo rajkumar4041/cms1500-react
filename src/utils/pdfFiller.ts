@@ -1,5 +1,5 @@
 import { PDFDocument, StandardFonts, PDFForm, PDFFont, PDFName } from 'pdf-lib';
-import type { CMS1500Data, DiagnosisCode } from '../types/cms1500';
+import type { CMS1500Address, CMS1500Data, DiagnosisCode } from '../types/cms1500';
 import {
   CARRIER_FIELDS,
   INSURANCE_TYPE_FIELD,
@@ -57,6 +57,23 @@ function resolveValue(val?: Record<string, string> | string): string {
   if (typeof val === 'string') return val;
   const values = Object.values(val);
   return (values[0] as string) ?? '';
+}
+
+/**
+ * Split an address into the two lines Box 32/33 print: the street line and the
+ * "City, ST ZIP" line. A plain string goes on the street line only (the
+ * caller already pre-formatted it); a structured address is split properly.
+ */
+function addressLines(address?: string | CMS1500Address): {
+  street?: string;
+  location?: string;
+} {
+  if (!address) return {};
+  if (typeof address === 'string') return { street: address };
+  const street = [address.line1, address.line2].filter(Boolean).join(', ');
+  const stateZip = [address.state, address.zipcode].filter(Boolean).join(' ');
+  const location = [address.city, stateZip].filter((p) => p && p.trim()).join(', ');
+  return { street: street || undefined, location: location || undefined };
 }
 
 /**
@@ -549,14 +566,18 @@ export async function fillCMS1500Pdf(
   set(PHYSICIAN_FIELDS.date, data.physicianSignatureDate);
 
   // === BOX 32: Service Facility ===
-  set(FACILITY_FIELDS.name, data.serviceFacilityName);
-  set(FACILITY_FIELDS.street, data.serviceFacilityAddress);
-  set(FACILITY_FIELDS.location, resolveValue(data.serviceLocation));
+  // Line 1 is the facility name (serviceLocation is a name, not an address, so
+  // it is the name fallback); street and city/state/zip go on their own lines.
+  const facilityAddress = addressLines(data.serviceFacilityAddress);
+  set(FACILITY_FIELDS.name, data.serviceFacilityName ?? resolveValue(data.serviceLocation));
+  set(FACILITY_FIELDS.street, facilityAddress.street);
+  set(FACILITY_FIELDS.location, facilityAddress.location);
 
   // === BOX 33: Billing Provider ===
-  set(BILLING_PROVIDER_FIELDS.name, resolveValue(data.billingProvider));
-  set(BILLING_PROVIDER_FIELDS.street, data.billingProviderAddress);
-  set(BILLING_PROVIDER_FIELDS.location, '');
+  const billingAddress = addressLines(data.billingProviderAddress);
+  set(BILLING_PROVIDER_FIELDS.name, data.billingProviderName ?? resolveValue(data.billingProvider));
+  set(BILLING_PROVIDER_FIELDS.street, billingAddress.street);
+  set(BILLING_PROVIDER_FIELDS.location, billingAddress.location);
   if (data.billingProviderPhone) {
     const bPhone = splitPhone(data.billingProviderPhone);
     set(BILLING_PROVIDER_FIELDS.phoneArea, bPhone.areaCode);

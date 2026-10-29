@@ -1,4 +1,4 @@
-# cms1500-react
+# cms1500-react [https://www.npmjs.com/package/cms1500-react]
 
 Production-ready React library for filling, rendering, and printing **CMS-1500 (HCFA)** claim forms. Uses `pdf-lib` to fill actual PDF form fields for pixel-perfect output. FHIR R4 compatible, HIPAA-conscious design.
 
